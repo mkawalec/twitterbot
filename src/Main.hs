@@ -42,7 +42,7 @@ parseConfig = getConfigMap =<< getConfig
 getMapValue :: Config -> String -> BS.ByteString
 getMapValue map key = BS.pack $ map Map.! key 
 
-signRequest :: Config -> Request -> IO Request
+--signRequest :: Config -> Request -> IO Request
 signRequest config request = do
     let getConfig = getMapValue config
     let authCred = OA.newCredential (getConfig "ACCESS_TOKEN") (getConfig "ACCESS_TOKEN_SECRET")
