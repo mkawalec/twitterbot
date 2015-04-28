@@ -1,7 +1,8 @@
 module Main where
 
 import              Network (withSocketsDo)
-import              Network.HTTP.Conduit
+import              Network.HTTP.Conduit (Request, parseUrl, withManager, httpLbs, responseBody)
+import              Data.Conduit
 import qualified    Data.ByteString.Lazy as L
 import              Data.Maybe
 import              Network.HTTP.Types.Header (RequestHeaders)
@@ -19,13 +20,15 @@ import qualified    Data.Text as T
 
 import              TweetParsers
 
-statusURI = "https://api.twitter.com/1.1/statuses/user_timeline.json?screen_name=b4zzl3"
+statusURI = "https://api.twitter.com/1.1/statuses/user_timeline.json?screen_name="
+
+type Config = Map.Map String String
 
 getConfig :: IO T.Text
 getConfig = return . convert =<< L.readFile ".env"
     where convert = T.pack . bytesToString . L.unpack
 
-getConfigMap :: T.Text -> IO (Map.Map String String)
+getConfigMap :: T.Text -> IO Config
 getConfigMap config = return $ Map.fromList pairs
     where stringify = T.unpack . T.strip
           pair = \[x, y] -> (stringify x, stringify y)
@@ -33,29 +36,33 @@ getConfigMap config = return $ Map.fromList pairs
           correctLines = filter (T.any (=='=')) (T.lines config)
           pairs = map processLine correctLines
 
-parseConfig :: IO (Map.Map String String)
+parseConfig :: IO Config
 parseConfig = getConfigMap =<< getConfig
 
-parseResponse :: L.ByteString -> IO Timeline
-parseResponse body = case decode body of
-    Just entries -> return entries
-    Nothing -> fail "dupa"
-
-getMapValue :: Map.Map String String -> String -> BS.ByteString
+getMapValue :: Config -> String -> BS.ByteString
 getMapValue map key = BS.pack $ map Map.! key 
 
-main :: IO ()
-main = withSocketsDo $ do
-    config <- parseConfig
+signRequest :: Config -> Request -> IO Request
+signRequest config request = do
     let getConfig = getMapValue config
     let authCred = OA.newCredential (getConfig "ACCESS_TOKEN") (getConfig "ACCESS_TOKEN_SECRET")
     let authConfig = OA.newOAuth { OA.oauthConsumerKey = getConfig "API_KEY"
                                  , OA.oauthConsumerSecret = getConfig "API_SECRET"
                                  }
-    
-    request <- parseUrl statusURI
-    signedReq <- OA.signOAuth authConfig authCred request
-    res <- withManager $ httpLbs signedReq
-    body <- parseResponse (responseBody res)
-    putStr $ show body
-    
+    OA.signOAuth authConfig authCred request
+
+getTimeline :: Config -> String -> IO (Either String Timeline)
+getTimeline config screenName = do
+    request <- parseUrl $ statusURI ++ screenName
+    res <- withManager $ \m -> do
+        signedReq <- signRequest config request
+        httpLbs signedReq m
+    return $ eitherDecode $ responseBody res
+
+main :: IO ()
+main = withSocketsDo $ do
+    config <- parseConfig
+    res <- getTimeline config "b4zzl3"
+    case res of
+        Left err -> putStrLn err
+        Right ts -> mapM_ print $ take 5 ts
