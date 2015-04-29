@@ -10,7 +10,7 @@ import qualified    Web.Authenticate.OAuth as OA
 import qualified    Data.ByteString.Char8 as BS
 import              Data.Default
 import              Language.Haskell.TH.Ppr (bytesToString)
-import              Control.Monad.IO.Class (liftIO)
+import              Control.Monad.IO.Class (liftIO, MonadIO)
 import              Control.Monad
 import              Data.Aeson
 import              Data.Data
@@ -42,7 +42,7 @@ parseConfig = getConfigMap =<< getConfig
 getMapValue :: Config -> String -> BS.ByteString
 getMapValue map key = BS.pack $ map Map.! key 
 
---signRequest :: Config -> Request -> IO Request
+signRequest :: MonadIO m => Config -> Request -> m Request
 signRequest config request = do
     let getConfig = getMapValue config
     let authCred = OA.newCredential (getConfig "ACCESS_TOKEN") (getConfig "ACCESS_TOKEN_SECRET")
