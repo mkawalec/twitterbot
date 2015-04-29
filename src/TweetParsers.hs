@@ -6,7 +6,7 @@ import              Control.Applicative
 import              Data.Time.LocalTime (LocalTime)
 import              Control.Monad
 import              Data.Text
-import              System.Locale (defaultTimeLocale)
+import              Data.Time.Locale.Compat (defaultTimeLocale)
 import              Debug.Trace
 
 data TweetUrl = TweetUrl { expandedUrl :: String
