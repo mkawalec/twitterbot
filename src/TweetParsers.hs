@@ -1,3 +1,5 @@
+{-# LANGUAGE CPP #-}
+
 module TweetParsers where
 
 import              Data.Aeson.Types
@@ -6,7 +8,11 @@ import              Control.Applicative
 import              Data.Time.LocalTime (LocalTime)
 import              Control.Monad
 import              Data.Text
+#if MIN_VERSION_time(1,5,0)
+import Data.Time.Format(defaultTimeLocale)
+#else
 import              System.Locale (defaultTimeLocale)
+#endif
 import              Debug.Trace
 
 data TweetUrl = TweetUrl { expandedUrl :: String
